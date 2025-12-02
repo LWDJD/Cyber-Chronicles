@@ -24,10 +24,11 @@ const TimelineNav: React.FC<TimelineNavProps> = ({ activeId }) => {
         return (
           <div 
             key={era.id} 
-            className="group flex items-center gap-4 cursor-pointer relative"
+            className="group relative flex items-center cursor-pointer"
             onClick={() => scrollToEra(era.id)}
           >
-            <div className="relative">
+            {/* Dot Container */}
+            <div className="relative z-10">
               <motion.div 
                 className="w-6 h-6 rounded-full border-2 bg-[#0a0a2a] flex items-center justify-center"
                 initial={false}
@@ -53,14 +54,31 @@ const TimelineNav: React.FC<TimelineNavProps> = ({ activeId }) => {
               </motion.div>
             </div>
             
-            <div className={`transition-all duration-300 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0'}`}>
+            {/* Floating Label / Tooltip
+                - Absolute positioning removes it from flow layout
+                - Background & Blur ensures readability over content
+                - Transitions handle visibility smoothly
+            */}
+            <div 
+                className={`absolute left-full ml-5 top-1/2 -translate-y-1/2 whitespace-nowrap z-50
+                            bg-[#0a0a2a]/95 backdrop-blur-md border border-white/20 px-4 py-2 rounded-md shadow-2xl
+                            transition-all duration-300 origin-left pointer-events-none
+                            ${isActive 
+                                ? 'opacity-100 translate-x-0 scale-100' 
+                                : 'opacity-0 -translate-x-4 scale-95 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100'
+                            }`}
+            >
+               {/* Decorative Left Arrow */}
+               <div className="absolute right-full top-1/2 -translate-y-1/2 border-y-[6px] border-y-transparent border-r-[6px] border-r-white/20"></div>
+               <div className="absolute right-full top-1/2 -translate-y-1/2 border-y-[5px] border-y-transparent border-r-[5px] border-r-[#0a0a2a] translate-x-[1px]"></div>
+
                <span 
-                 className="text-xs font-mono font-bold uppercase tracking-wider block" 
+                 className="text-xs font-mono font-bold uppercase tracking-wider block mb-0.5" 
                  style={{ color: isActive ? era.themeColor : '#9ca3af' }}
                >
                  {era.period}
                </span>
-               <span className="text-[10px] text-gray-500 uppercase">{era.title}</span>
+               <span className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">{era.title}</span>
             </div>
           </div>
         );
