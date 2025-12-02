@@ -1,3 +1,5 @@
+import React from 'react';
+
 export interface EraData {
   id: string;
   title: string;

@@ -161,6 +161,10 @@ const App: React.FC = () => {
 
     // Safety: re-enable on mouse move just in case user wants to interact mid-flight or timeout failed
     const handleMouseMove = () => {
+        // CRITICAL FIX: Do not re-enable pointer events if we are explicitly resetting/scrolling to top.
+        // This prevents mouse movement from cancelling the 'smooth' scroll behavior.
+        if (isResetting) return;
+
         if (document.body.style.pointerEvents === 'none') {
             document.body.style.pointerEvents = '';
         }
@@ -177,10 +181,58 @@ const App: React.FC = () => {
     };
   }, [expandedEraId, isResetting]); 
 
+  // New Effect: Block manual scroll inputs (Wheel/Touch) strictly during resetting
+  useEffect(() => {
+    if (!isResetting) return;
+
+    const preventDefault = (e: Event) => {
+        e.preventDefault();
+    };
+
+    // passive: false is required to use e.preventDefault() on touch/wheel listeners
+    window.addEventListener('wheel', preventDefault, { passive: false });
+    window.addEventListener('touchmove', preventDefault, { passive: false });
+
+    return () => {
+        window.removeEventListener('wheel', preventDefault);
+        window.removeEventListener('touchmove', preventDefault);
+    };
+  }, [isResetting]);
+
   const handleReconnect = () => {
     setIsResetting(true);
-    // Lock interaction for 2 seconds (typical smooth scroll duration for long pages)
-    setTimeout(() => setIsResetting(false), 2000);
+    
+    // Disable interactions globally
+    document.body.style.pointerEvents = 'none';
+    
+    const startY = window.scrollY;
+    const duration = 2000; // 2 seconds
+    const startTime = performance.now();
+
+    // CUSTOM ANIMATION LOOP
+    // This ignores user interruptions (like mouseup) because it force-sets scrollY every frame
+    const animateScroll = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing Function: Ease In Out Cubic
+      const ease = progress < 0.5 
+        ? 4 * progress * progress * progress 
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      // Force scroll position
+      window.scrollTo(0, startY * (1 - ease));
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      } else {
+        // Animation Complete
+        setIsResetting(false);
+        document.body.style.pointerEvents = '';
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
   };
 
   return (
@@ -216,7 +268,7 @@ const App: React.FC = () => {
           ))}
         </div>
 
-        <Conclusion onReconnect={handleReconnect} />
+        <Conclusion onReconnect={handleReconnect} disabled={isResetting} />
         
         <footer className="w-full py-10 text-center text-gray-600 font-mono text-sm border-t border-white/5 relative z-10">
           <p>CHRONONET // 系统终止线 SYSTEM END OF LINE</p>
