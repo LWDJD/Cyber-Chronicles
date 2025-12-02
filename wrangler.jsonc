@@ -1,6 +1,6 @@
 // wrangler.jsonc
 {
-  "name": "chrononet-digital-civilization",
+  "name": "cyber-chronicles",
   "compatibility_date": "2025-12-02",
   "assets": {
     "directory": "./dist"
