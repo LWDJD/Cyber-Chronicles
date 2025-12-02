@@ -1,49 +1,76 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import ParticleBackground from './components/ParticleBackground';
 import Hero from './components/Hero';
 import EraSection from './components/EraSection';
 import TimelineNav from './components/TimelineNav';
 import Conclusion from './components/Conclusion';
+import BackgroundMusic from './components/BackgroundMusic';
 import { ERAS } from './constants';
 
 const App: React.FC = () => {
   const [activeEraId, setActiveEraId] = useState<string>('');
   const [expandedEraId, setExpandedEraId] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false); // New state to lock interactions during reset
+  const [isResetting, setIsResetting] = useState(false);
+
+  // CACHE SYSTEM: Store section positions to avoid reading DOM during scroll (prevents layout thrashing)
+  const sectionPositionsRef = useRef<{ id: string; top: number; bottom: number }[]>([]);
+
+  // Function to calculate and cache positions (Run on mount and resize)
+  const measureSections = () => {
+    const sectionIds = ['hero', ...ERAS.map(e => e.id), 'conclusion'];
+    const positions: { id: string; top: number; bottom: number }[] = [];
+
+    sectionIds.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        // We use offsetTop + height to know boundaries relative to the document
+        positions.push({
+          id,
+          top: element.offsetTop,
+          bottom: element.offsetTop + element.offsetHeight
+        });
+      }
+    });
+    sectionPositionsRef.current = positions;
+  };
 
   useEffect(() => {
-    // Replacement of IntersectionObserver with a distance-based check
-    // This ensures the active era is always the one closest to the center of the viewport
-    // correcting the "off-by-one" and "wrong start page" issues.
+    // Initial measurement
+    // We delay slightly to ensure DOM is fully rendered
+    setTimeout(measureSections, 100);
+
+    const handleResize = () => {
+        measureSections();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Performance Optimized Scroll Handler
+    // Does NOT read DOM properties, only checks cached values against window.scrollY
     const handleScroll = () => {
+      if (sectionPositionsRef.current.length === 0) return;
+
+      // Current view center line
       const viewportCenter = window.scrollY + window.innerHeight / 2;
-      
-      // Track all sections including Hero and Conclusion to allow "deselecting" eras
-      const sectionIds = ['hero', ...ERAS.map(e => e.id), 'conclusion'];
       
       let closestId = '';
       let minDistance = Infinity;
 
-      for (const id of sectionIds) {
-        const element = document.getElementById(id);
-        if (element) {
-          // We use offsetTop + height/2 to find the center of the element relative to the document
-          // Then compare it with viewportCenter (which is also relative to document: scrollY + windowH/2)
-          const elementCenter = element.offsetTop + element.offsetHeight / 2;
-          const distance = Math.abs(elementCenter - viewportCenter);
-          
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestId = id;
-          }
+      // Pure math comparison - extremely fast
+      for (const section of sectionPositionsRef.current) {
+        const sectionCenter = (section.top + section.bottom) / 2;
+        const distance = Math.abs(sectionCenter - viewportCenter);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestId = section.id;
         }
       }
 
       setActiveEraId(closestId);
     };
 
-    // Use requestAnimationFrame for performance throttling
     let ticking = false;
     const onScroll = () => {
       if (!ticking) {
@@ -56,37 +83,32 @@ const App: React.FC = () => {
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    // Run once on mount to set initial state
+    
+    // Initial check
     handleScroll();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
   // Global Keyboard Shortcuts: Enter (Open/Close Deep Dive) / Esc (Close Deep Dive)
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
-      // Respect event handled by child components (e.g. Conclusion hold button)
-      // This prevents "Enter" from opening the sidebar if it was used to trigger Reconnect
       if (e.defaultPrevented) return; 
-
-      // BLOCK INTERACTION if resetting (scrolling to top)
       if (isResetting) return;
 
       if (e.key === 'Enter') {
         if (expandedEraId) {
-          // MODIFIED: Enter now also closes the sidebar
           setExpandedEraId(null);
         } else {
-          // Open logic
           const isEra = ERAS.some(era => era.id === activeEraId);
           if (isEra) {
             setExpandedEraId(activeEraId);
           }
         }
       } else if (e.key === 'Escape') {
-        // If sidebar is open, close it
         if (expandedEraId) {
           setExpandedEraId(null);
         }
@@ -103,17 +125,12 @@ const App: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        // Check if Conclusion component handled this (e.g. Hold to Reconnect)
         if (e.defaultPrevented) return;
-
-        // Prevent key repeat (holding space) from triggering multiple heavy scroll calculations/animations
         if (e.repeat) {
           e.preventDefault();
           return;
         }
         
-        // Do not scroll if sidebar is open OR if we are currently resetting/reconnecting
-        // CRITICAL: e.preventDefault() here stops the browser from scrolling the background
         if (expandedEraId || isResetting) {
             e.preventDefault();
             return;
@@ -121,50 +138,43 @@ const App: React.FC = () => {
 
         e.preventDefault();
         
+        // Use cached positions for spacebar nav too!
         const scrollY = window.scrollY;
         const buffer = 50; 
-        
-        // Find next target efficiently
         let nextTop = undefined;
 
-        for (const era of ERAS) {
-           const el = document.getElementById(era.id);
-           if (el && el.offsetTop > scrollY + buffer) {
-             nextTop = el.offsetTop;
-             break; // Stop immediately after finding the next one
+        // Find next section from cache
+        const currentPos = sectionPositionsRef.current;
+        const eraIds = ERAS.map(e => e.id);
+        
+        for (const pos of currentPos) {
+           // Only look for Era sections
+           if (eraIds.includes(pos.id) && pos.top > scrollY + buffer) {
+             nextTop = pos.top;
+             break;
            }
         }
         
-        // OPTIMIZATION: Disable pointer events during programmatic scroll
-        // This prevents expensive hover calculations/hit-testing as elements pass under the static cursor
         document.body.style.pointerEvents = 'none';
 
         if (nextTop !== undefined) {
            window.scrollTo({ top: nextTop, behavior: 'smooth' });
         } else {
-           // If no next era, scroll to bottom (footer) if not already there
            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
            if (scrollY < maxScroll - buffer) {
               window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
            }
         }
 
-        // Clear existing timeout
         clearTimeout(scrollTimeout);
-        
-        // Re-enable pointer events after animation (browser smooth scroll is usually ~700-1000ms max)
         scrollTimeout = setTimeout(() => {
           document.body.style.pointerEvents = '';
         }, 1000);
       }
     };
 
-    // Safety: re-enable on mouse move just in case user wants to interact mid-flight or timeout failed
     const handleMouseMove = () => {
-        // CRITICAL FIX: Do not re-enable pointer events if we are explicitly resetting/scrolling to top.
-        // This prevents mouse movement from cancelling the 'smooth' scroll behavior.
         if (isResetting) return;
-
         if (document.body.style.pointerEvents === 'none') {
             document.body.style.pointerEvents = '';
         }
@@ -181,18 +191,12 @@ const App: React.FC = () => {
     };
   }, [expandedEraId, isResetting]); 
 
-  // New Effect: Block manual scroll inputs (Wheel/Touch) strictly during resetting
+  // Block inputs during reset
   useEffect(() => {
     if (!isResetting) return;
-
-    const preventDefault = (e: Event) => {
-        e.preventDefault();
-    };
-
-    // passive: false is required to use e.preventDefault() on touch/wheel listeners
+    const preventDefault = (e: Event) => e.preventDefault();
     window.addEventListener('wheel', preventDefault, { passive: false });
     window.addEventListener('touchmove', preventDefault, { passive: false });
-
     return () => {
         window.removeEventListener('wheel', preventDefault);
         window.removeEventListener('touchmove', preventDefault);
@@ -201,48 +205,35 @@ const App: React.FC = () => {
 
   const handleReconnect = () => {
     setIsResetting(true);
-    
-    // Disable interactions globally
     document.body.style.pointerEvents = 'none';
     
     const startY = window.scrollY;
-    const duration = 2000; // 2 seconds
+    const duration = 2000;
     const startTime = performance.now();
 
-    // CUSTOM ANIMATION LOOP
-    // This ignores user interruptions (like mouseup) because it force-sets scrollY every frame
     const animateScroll = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // Easing Function: Ease In Out Cubic
       const ease = progress < 0.5 
         ? 4 * progress * progress * progress 
         : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 
-      // Force scroll position
       window.scrollTo(0, startY * (1 - ease));
 
       if (progress < 1) {
         requestAnimationFrame(animateScroll);
       } else {
-        // Animation Complete
         setIsResetting(false);
         document.body.style.pointerEvents = '';
       }
     };
-
     requestAnimationFrame(animateScroll);
   };
 
   return (
-    <div className="relative text-white min-h-screen selection:bg-cyan-500 selection:text-black">
-      {/* 
-        PERFORMANCE HACK (Wake Lock): 
-        Hidden animation loop to force browser compositor to stay active/awake.
-        This prevents browser throttling (dropping to 30fps) when mouse is idle.
-        Crucial for maintaining high FPS in static scenes.
-      */}
+    // FIX: overflow-x-hidden ensures no horizontal scroll from animated elements
+    <div className="relative text-white min-h-screen selection:bg-cyan-500 selection:text-black w-full overflow-x-hidden">
       <motion.div 
         animate={{ opacity: [0, 0.001, 0] }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -250,6 +241,7 @@ const App: React.FC = () => {
       />
 
       <ParticleBackground />
+      <BackgroundMusic />
       
       <main className="relative z-10 flex flex-col items-center w-full">
         <Hero />
@@ -276,8 +268,12 @@ const App: React.FC = () => {
         </footer>
       </main>
       
-      {/* Mobile Nav Overlay (Bottom) */}
-      <div className="fixed bottom-0 left-0 w-full bg-[#0a0a2a]/90 backdrop-blur-md border-t border-white/10 p-4 lg:hidden z-50 flex justify-between items-center px-6">
+      {/* 
+        FIX: Mobile Nav Overlay 
+        - Removed w-full, used inset-x-0 for safer full width
+        - Kept other classes
+      */}
+      <div className="fixed bottom-0 inset-x-0 bg-[#0a0a2a]/90 backdrop-blur-md border-t border-white/10 p-4 lg:hidden z-50 flex justify-between items-center px-6 safe-pb-4">
         <span className="text-xs font-mono text-cyan-400 uppercase">
           {ERAS.find(e => e.id === activeEraId)?.period || "INIT"}
         </span>

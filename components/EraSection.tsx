@@ -36,7 +36,8 @@ const EraSection: React.FC<EraSectionProps> = ({ data, index, isExpanded, onTogg
       <section 
         id={data.id} 
         ref={ref} 
-        className="min-h-screen w-full flex items-center justify-center relative py-24 snap-start"
+        // Added overflow-hidden to clip incoming animations preventing scrollbar expansion
+        className="min-h-screen w-full flex items-center justify-center relative py-24 snap-start overflow-hidden"
       >
         <div className="container mx-auto px-4 max-w-6xl relative z-10 flex flex-col md:flex-row gap-12 items-center">
           
