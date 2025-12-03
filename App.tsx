@@ -18,7 +18,13 @@ const App: React.FC = () => {
 
   // Function to calculate and cache positions (Run on mount and resize)
   const measureSections = () => {
-    const sectionIds = ['hero', ...ERAS.map(e => e.id), 'conclusion'];
+    // Include ALL navigable section IDs
+    const sectionIds = [
+        'hero', 
+        ...ERAS.map(e => e.id), 
+        'conclusion'
+    ];
+    
     const positions: { id: string; top: number; bottom: number }[] = [];
 
     sectionIds.forEach(id => {
@@ -32,6 +38,10 @@ const App: React.FC = () => {
         });
       }
     });
+    
+    // Sort positions by top just in case DOM order varies (though it shouldn't)
+    positions.sort((a, b) => a.top - b.top);
+    
     sectionPositionsRef.current = positions;
   };
 
@@ -145,11 +155,16 @@ const App: React.FC = () => {
 
         // Find next section from cache
         const currentPos = sectionPositionsRef.current;
-        const eraIds = ERAS.map(e => e.id);
+        
+        // Allowed stops for keyboard navigation
+        const navigationTargets = [
+            ...ERAS.map(e => e.id), 
+            'conclusion'
+        ];
         
         for (const pos of currentPos) {
-           // Only look for Era sections
-           if (eraIds.includes(pos.id) && pos.top > scrollY + buffer) {
+           // Check if it's a valid navigation target and is below current scroll
+           if (navigationTargets.includes(pos.id) && pos.top > scrollY + buffer) {
              nextTop = pos.top;
              break;
            }
@@ -250,21 +265,30 @@ const App: React.FC = () => {
         
         <div className="w-full flex flex-col gap-0 pb-12">
           {ERAS.map((era, index) => (
-            <EraSection 
-              key={era.id} 
-              data={era} 
-              index={index}
-              isExpanded={expandedEraId === era.id}
-              onToggleSidebar={(isOpen) => setExpandedEraId(isOpen ? era.id : null)}
-            />
+            <React.Fragment key={era.id}>
+                <EraSection 
+                  data={era} 
+                  index={index}
+                  isExpanded={expandedEraId === era.id}
+                  onToggleSidebar={(isOpen) => setExpandedEraId(isOpen ? era.id : null)}
+                />
+            </React.Fragment>
           ))}
         </div>
 
         <Conclusion onReconnect={handleReconnect} disabled={isResetting} />
         
-        <footer className="w-full py-10 text-center text-gray-600 font-mono text-sm border-t border-white/5 relative z-10">
+        <footer className="w-full py-10 text-center text-gray-600 font-mono text-sm border-t border-white/5 relative z-10 bg-black/40">
           <p>CHRONONET // 系统终止线 SYSTEM END OF LINE</p>
-          <p className="mt-2 text-xs opacity-50">Rendering engine: React 18 / Tailwind / Motion</p>
+          <div className="mt-4 flex justify-center gap-4 text-xs opacity-50">
+             <span>REACT 19</span>
+             <span>•</span>
+             <span>TAILWIND</span>
+             <span>•</span>
+             <span>FRAMER MOTION</span>
+             <span>•</span>
+             <span>LUCIDE</span>
+          </div>
         </footer>
       </main>
       

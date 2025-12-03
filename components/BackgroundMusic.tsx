@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VolumeX } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const PLAYLIST = [
   "https://cdn.pixabay.com/audio/2022/01/21/audio_31743c58bd.mp3",
@@ -12,6 +12,7 @@ const BackgroundMusic: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     // Initialize Audio Object
@@ -100,27 +101,35 @@ const BackgroundMusic: React.FC = () => {
 
   return (
     <motion.button
+      layout
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 1, duration: 0.8 }}
+      transition={{ 
+        layout: { duration: 0.3, type: "spring", stiffness: 300, damping: 30 },
+        opacity: { duration: 0.8, delay: 1 },
+        x: { duration: 0.8, delay: 1 }
+      }}
       onClick={(e) => {
           e.stopPropagation(); // Don't trigger the global unlocker if we are clicking the button specifically
           togglePlay();
       }}
-      className={`fixed top-6 left-6 z-50 flex items-center gap-3 px-3 py-2 
-                  border transition-all duration-300 group select-none
-                  font-mono text-xs tracking-widest
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className={`fixed top-6 left-6 z-50 flex items-center 
+                  border transition-colors duration-300 group select-none
+                  font-mono text-xs tracking-widest overflow-hidden
                   ${isPlaying 
                     ? 'border-cyan-500/50 bg-[#0a0a2a]/80 text-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.2)]' 
                     : 'border-white/10 bg-black/40 text-gray-500 hover:border-white/30 hover:text-white'
                   }`}
       style={{
-        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+        padding: '8px'
       }}
       aria-label={isPlaying ? "Mute Music" : "Play Music"}
       title={isPlaying ? "Pause Music" : "Play Background Music"}
     >
-      <div className="flex items-center justify-center w-5 h-5">
+      <motion.div layout className="flex items-center justify-center w-5 h-5 shrink-0">
         {isPlaying ? (
            <div className="flex items-end gap-[2px] h-3">
               {[1, 2, 3].map((bar) => (
@@ -140,14 +149,24 @@ const BackgroundMusic: React.FC = () => {
         ) : (
            <VolumeX size={14} />
         )}
-      </div>
+      </motion.div>
 
-      <div className="flex flex-col items-start leading-none gap-0.5">
-          <span className="text-[8px] opacity-60 uppercase">System Audio</span>
-          <span className="font-bold uppercase text-[10px]">
-            {isPlaying ? 'ONLINE' : 'MUTED'}
-          </span>
-      </div>
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div 
+            initial={{ width: 0, opacity: 0, marginLeft: 0 }}
+            animate={{ width: 'auto', opacity: 1, marginLeft: 12 }}
+            exit={{ width: 0, opacity: 0, marginLeft: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="flex flex-col items-start leading-none gap-0.5 whitespace-nowrap overflow-hidden"
+          >
+              <span className="text-[8px] opacity-60 uppercase">System Audio</span>
+              <span className="font-bold uppercase text-[10px]">
+                {isPlaying ? 'ONLINE' : 'MUTED'}
+              </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Decorative corner accents */}
       <div className={`absolute -bottom-px -right-px w-2 h-2 border-b border-r border-current transition-opacity ${isPlaying ? 'opacity-100' : 'opacity-30'}`} />
