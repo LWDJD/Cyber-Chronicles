@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { VolumeX } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const PLAYLIST = [
   "https://cdn.pixabay.com/audio/2022/01/21/audio_31743c58bd.mp3",
@@ -55,7 +56,7 @@ const BackgroundMusic: React.FC = () => {
               audioRef.current.play().catch(e => console.error("Track switch play failed", e));
           }
       }
-  }, [currentIndex]); // Intentionally omitting isPlaying to avoid loop, we track play state separately
+  }, [currentIndex]); 
 
   // Global Interaction Listener (Unlock Audio Context)
   useEffect(() => {
@@ -98,31 +99,60 @@ const BackgroundMusic: React.FC = () => {
   };
 
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 1, duration: 0.8 }}
       onClick={(e) => {
           e.stopPropagation(); // Don't trigger the global unlocker if we are clicking the button specifically
           togglePlay();
       }}
-      className={`fixed top-4 right-4 z-50 p-3 rounded-full border transition-all duration-500 backdrop-blur-md group ${
-        isPlaying 
-          ? 'bg-cyan-900/30 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.2)]' 
-          : 'bg-black/40 border-white/10 text-gray-500 hover:bg-black/60 hover:text-gray-300'
-      }`}
+      className={`fixed top-6 left-6 z-50 flex items-center gap-3 px-3 py-2 
+                  border transition-all duration-300 group select-none
+                  font-mono text-xs tracking-widest
+                  ${isPlaying 
+                    ? 'border-cyan-500/50 bg-[#0a0a2a]/80 text-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.2)]' 
+                    : 'border-white/10 bg-black/40 text-gray-500 hover:border-white/30 hover:text-white'
+                  }`}
+      style={{
+        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+      }}
       aria-label={isPlaying ? "Mute Music" : "Play Music"}
       title={isPlaying ? "Pause Music" : "Play Background Music"}
     >
-      {isPlaying ? (
-         <div className="relative">
-             <Volume2 size={20} />
-             <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-              </span>
-         </div>
-      ) : (
-         <VolumeX size={20} />
-      )}
-    </button>
+      <div className="flex items-center justify-center w-5 h-5">
+        {isPlaying ? (
+           <div className="flex items-end gap-[2px] h-3">
+              {[1, 2, 3].map((bar) => (
+                <motion.div
+                  key={bar}
+                  className="w-1 bg-cyan-400"
+                  animate={{ height: ["20%", "100%", "20%"] }}
+                  transition={{ 
+                    duration: 0.5 + Math.random() * 0.5, 
+                    repeat: Infinity, 
+                    ease: "easeInOut",
+                    delay: bar * 0.1
+                  }}
+                />
+              ))}
+           </div>
+        ) : (
+           <VolumeX size={14} />
+        )}
+      </div>
+
+      <div className="flex flex-col items-start leading-none gap-0.5">
+          <span className="text-[8px] opacity-60 uppercase">System Audio</span>
+          <span className="font-bold uppercase text-[10px]">
+            {isPlaying ? 'ONLINE' : 'MUTED'}
+          </span>
+      </div>
+
+      {/* Decorative corner accents */}
+      <div className={`absolute -bottom-px -right-px w-2 h-2 border-b border-r border-current transition-opacity ${isPlaying ? 'opacity-100' : 'opacity-30'}`} />
+      <div className={`absolute -top-px -left-px w-2 h-2 border-t border-l border-current transition-opacity ${isPlaying ? 'opacity-100' : 'opacity-30'}`} />
+    </motion.button>
   );
 };
 
