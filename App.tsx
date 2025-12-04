@@ -7,6 +7,7 @@ import TimelineNav from './components/TimelineNav';
 import Conclusion from './components/Conclusion';
 import BackgroundMusic from './components/BackgroundMusic';
 import CustomCursor from './components/CustomCursor';
+import DataInsights from './components/DataInsights'; // Import the new component
 import { ERAS } from './constants';
 
 const motion = m as any;
@@ -98,6 +99,7 @@ const App: React.FC = () => {
     const sectionIds = [
         'hero', 
         ...ERAS.map(e => e.id), 
+        'data-insights',
         'conclusion'
     ];
     
@@ -258,6 +260,7 @@ const App: React.FC = () => {
         // Allowed stops for keyboard navigation
         const navigationTargets = [
             ...ERAS.map(e => e.id), 
+            'data-insights',
             'conclusion'
         ];
         
@@ -383,6 +386,9 @@ const App: React.FC = () => {
             </React.Fragment>
           ))}
         </div>
+
+        {/* INSERT DATA INSIGHTS HERE */}
+        <DataInsights id="data-insights" />
 
         <Conclusion onReconnect={handleReconnect} disabled={isResetting} />
         
