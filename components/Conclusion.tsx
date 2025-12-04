@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion as m, useInView } from 'framer-motion';
 import { Power } from 'lucide-react';
+
+const motion = m as any;
 
 interface ConclusionProps {
   onReconnect: () => void;
@@ -21,121 +23,108 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
   const isHoldingRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const releaseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Track ALL active inputs (mouse, touch, specific keys)
+  // Track ALL active inputs to support multi-input (e.g. key + mouse) correctly
   const activeInputsRef = useRef<Set<string>>(new Set());
 
   const HOLD_DURATION = 2000; 
   const REWIND_MULTIPLIER = 5; 
 
+  // --- Animation Control ---
+
+  const stopAnimation = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    lastTimeRef.current = 0;
+  }, []);
+
   const triggerAction = useCallback(() => {
     onReconnect();
-    
+    stopAnimation();
     // Reset internal state
     progressRef.current = 0;
-    activeInputsRef.current.clear();
-    isHoldingRef.current = false;
-    if (releaseTimeoutRef.current) clearTimeout(releaseTimeoutRef.current);
-    
-    // Update UI
     setProgress(0);
+    isHoldingRef.current = false;
     setIsHolding(false);
-  }, [onReconnect]);
+    activeInputsRef.current.clear();
+  }, [onReconnect, stopAnimation]);
 
-  const animateLoop = useCallback(() => {
-    const time = performance.now();
-    
-    if (lastTimeRef.current === 0) {
-      lastTimeRef.current = time;
+  const animate = useCallback((time: number) => {
+    if (!lastTimeRef.current) {
+        lastTimeRef.current = time;
     }
-    
-    // Calculate delta time
-    let dt = Math.max(0, Math.min((time - lastTimeRef.current), 100)); 
+
+    const dt = time - lastTimeRef.current;
     lastTimeRef.current = time;
 
     // Logic based on ref state
     if (isHoldingRef.current) {
-      progressRef.current += (dt / HOLD_DURATION) * 100;
+        // Increment Progress
+        progressRef.current += (dt / HOLD_DURATION) * 100;
     } else {
-      progressRef.current -= (dt / HOLD_DURATION) * 100 * REWIND_MULTIPLIER;
+        // Decrement Progress (Rewind)
+        progressRef.current -= (dt / HOLD_DURATION) * 100 * REWIND_MULTIPLIER;
     }
 
     // Clamp and check boundaries
     if (progressRef.current >= 100) {
-      progressRef.current = 100;
-      setProgress(100);
-      triggerAction();
-      animationFrameRef.current = null;
-      return; 
+        progressRef.current = 100;
+        setProgress(100);
+        triggerAction();
+        return; // Stop loop
     } else if (progressRef.current <= 0) {
-      progressRef.current = 0;
-      
-      // Stop loop only if we are at 0 AND definitely not holding
-      if (!isHoldingRef.current) {
-        setProgress(0);
-        animationFrameRef.current = null;
-        lastTimeRef.current = 0; // Reset time for next run
-        return;
-      }
+        progressRef.current = 0;
+        
+        // Only stop loop if we are at 0 AND user is definitely not holding
+        // This ensures if user presses again while rewinding, it catches it
+        if (!isHoldingRef.current) {
+            setProgress(0);
+            stopAnimation();
+            return; // Stop loop
+        }
     }
 
     setProgress(progressRef.current);
-    animationFrameRef.current = requestAnimationFrame(animateLoop);
-  }, [triggerAction, HOLD_DURATION, REWIND_MULTIPLIER]);
+    animationFrameRef.current = requestAnimationFrame(animate);
+  }, [triggerAction, stopAnimation]);
 
-  // Centralized state manager with Debounce
-  const updateInteractionState = useCallback(() => {
+  const startAnimation = useCallback(() => {
+    if (!animationFrameRef.current) {
+        lastTimeRef.current = performance.now();
+        animationFrameRef.current = requestAnimationFrame(animate);
+    }
+  }, [animate]);
+
+  // --- Input Management ---
+
+  const updateInputState = useCallback(() => {
     const hasActiveInput = activeInputsRef.current.size > 0;
     
-    if (hasActiveInput) {
-        // INPUT DETECTED: Cancel any pending release
-        if (releaseTimeoutRef.current) {
-            clearTimeout(releaseTimeoutRef.current);
-            releaseTimeoutRef.current = null;
-        }
+    // Update refs immediately
+    isHoldingRef.current = hasActiveInput;
+    setIsHolding(hasActiveInput);
 
-        // Start holding immediately
-        if (!isHoldingRef.current) {
-            isHoldingRef.current = true;
-            setIsHolding(true);
-            
-            // Start Loop if not running
-            if (!animationFrameRef.current) {
-                 lastTimeRef.current = performance.now();
-                 animationFrameRef.current = requestAnimationFrame(animateLoop);
-            }
-        }
-    } else {
-        // INPUT LOST: Debounce release to smooth out jitter (key switching / trackpad micro-breaks)
-        if (!releaseTimeoutRef.current && isHoldingRef.current) {
-            releaseTimeoutRef.current = setTimeout(() => {
-                isHoldingRef.current = false;
-                setIsHolding(false);
-                releaseTimeoutRef.current = null;
-                // We do NOT stop the loop here; the loop handles the rewind animation
-            }, 50); // 50ms grace period
-        }
+    // If we have input, OR if progress is > 0 (needs rewind), ensure loop is running
+    if (hasActiveInput || progressRef.current > 0) {
+        startAnimation();
     }
-  }, [animateLoop]);
+  }, [startAnimation]);
 
   const addInput = useCallback((inputId: string) => {
       activeInputsRef.current.add(inputId);
-      updateInteractionState();
-  }, [updateInteractionState]);
+      updateInputState();
+  }, [updateInputState]);
 
   const removeInput = useCallback((inputId: string) => {
       activeInputsRef.current.delete(inputId);
-      updateInteractionState();
-  }, [updateInteractionState]);
+      updateInputState();
+  }, [updateInputState]);
 
-  const resetAll = useCallback(() => {
-    activeInputsRef.current.clear();
-    if (releaseTimeoutRef.current) clearTimeout(releaseTimeoutRef.current);
-    updateInteractionState();
-  }, [updateInteractionState]);
 
-  // Mouse Handlers
+  // --- Event Listeners ---
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled) return;
     addInput('mouse');
@@ -147,10 +136,9 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
     window.addEventListener('mouseup', handleUp);
   }, [disabled, addInput, removeInput]);
 
-  // Touch Handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (disabled) return;
-    e.preventDefault(); 
+    // e.preventDefault(); // Handled in CSS with touch-action: none
     addInput('touch');
 
     const handleEnd = () => {
@@ -162,51 +150,29 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
     window.addEventListener('touchcancel', handleEnd);
   }, [disabled, addInput, removeInput]);
 
-  // Disabled State effect
+  // Keyboard support
   useEffect(() => {
-    if (disabled) {
-      activeInputsRef.current.clear();
-      isHoldingRef.current = false;
-      setIsHolding(false);
-      progressRef.current = 0;
-      setProgress(0);
-      if (releaseTimeoutRef.current) clearTimeout(releaseTimeoutRef.current);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    }
-  }, [disabled]);
-
-  // Keyboard and Window Event support
-  useEffect(() => {
-    if (!isInView) {
-      resetAll();
-      if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-          animationFrameRef.current = null;
-      }
-      return;
-    }
+    if (!isInView || disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (disabled) return;
+      if (e.repeat) return;
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
-        // Browser auto-repeat will fire this constantly, but Set handles uniqueness efficiently
-        addInput(e.code);
+        addInput('keyboard');
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
-        removeInput(e.code);
+        removeInput('keyboard');
       }
     };
 
     const handleBlur = () => {
-        resetAll();
+        // Safety valve: clear all inputs if window loses focus
+        activeInputsRef.current.clear();
+        updateInputState();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -217,12 +183,20 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
-      if (releaseTimeoutRef.current) clearTimeout(releaseTimeoutRef.current);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
     };
-  }, [isInView, addInput, removeInput, resetAll, disabled]);
+  }, [isInView, disabled, addInput, removeInput, updateInputState]);
+
+  // Reset when disabled state changes
+  useEffect(() => {
+    if (disabled) {
+      activeInputsRef.current.clear();
+      isHoldingRef.current = false;
+      setIsHolding(false);
+      progressRef.current = 0;
+      setProgress(0);
+      stopAnimation();
+    }
+  }, [disabled, stopAnimation]);
 
   return (
     <section id="conclusion" ref={ref} className="min-h-[60vh] w-full flex flex-col items-center justify-center relative z-10 px-4 py-24 text-center">
@@ -259,7 +233,6 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
         {/* Hold Button */}
         <div className={`relative inline-block select-none ${disabled ? 'opacity-50 pointer-events-none grayscale' : ''} transition-all duration-500`}>
           <motion.button
-            // Unified Animation State: Controls scale for BOTH Mouse and Keyboard
             animate={{ 
               scale: isHolding ? 0.95 : (isHovered && !disabled ? 1.05 : 1) 
             }}
@@ -269,10 +242,11 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
             
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            onContextMenu={(e) => e.preventDefault()}
-            onDragStart={(e) => e.preventDefault()}
+            onContextMenu={(e: any) => e.preventDefault()}
+            onDragStart={(e: any) => e.preventDefault()}
             disabled={disabled}
-            className={`group relative px-8 py-4 bg-black transition-all duration-300 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+            className={`group relative px-8 py-4 bg-black transition-all duration-300 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} touch-none`}
+            style={{ WebkitTapHighlightColor: 'transparent' }}
           >
             {/* Base Border (fades out when holding starts to let progress bar take over visually) */}
             <div className={`absolute inset-0 border border-cyan-500/30 transition-opacity duration-300 ${isHolding || progress > 0 ? 'opacity-0' : 'opacity-100'}`}></div>

@@ -1,14 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion as m, useInView } from 'framer-motion';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { Globe, Users, Server, Wifi, Cpu, Layers } from 'lucide-react';
+
+const motion = m as any;
 
 // --- GENESIS: TERMINAL ---
 export const GenesisVisual: React.FC = () => {
   const [text, setText] = useState('');
   const fullText = `> ESTABLISHING CONNECTION...\n> NODE 1 (UCLA) CONNECTED\n> NODE 2 (SRI) CONNECTED\n> LOGON: L... O...\n> SYSTEM CRASH DETECTED\n> REBOOTING ARPANET DAEMON...\n> PACKET SWITCHING PROTOCOL: ACTIVE\n> TCP/IP HANDSHAKE: SUCCESS\n> 欢迎登录 WELCOME TO THE NETWORK.`;
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, amount: 0.5 });
+
   useEffect(() => {
+    if (!isInView) return;
+
     let index = 0;
     const interval = setInterval(() => {
       setText(fullText.slice(0, index));
@@ -16,10 +23,10 @@ export const GenesisVisual: React.FC = () => {
       if (index > fullText.length) clearInterval(interval);
     }, 50);
     return () => clearInterval(interval);
-  }, []);
+  }, [isInView]);
 
   return (
-    <div className="w-full h-64 bg-[#0a0a0a] border-4 border-[#2a2a2a] rounded-xl relative overflow-hidden shadow-2xl group-hover:border-[#33ff33]/30 transition-colors duration-500">
+    <div ref={containerRef} className="w-full h-64 bg-[#0a0a0a] border-4 border-[#2a2a2a] rounded-xl relative overflow-hidden shadow-2xl group-hover:border-[#33ff33]/30 transition-colors duration-500">
       {/* CRT Screen Container */}
       <div className="w-full h-full bg-[#051005] p-5 font-retro text-[#33ff33] text-lg leading-snug relative scanlines overflow-hidden">
         
@@ -128,51 +135,111 @@ export const DotComVisual: React.FC = () => {
   );
 };
 
-// --- WEB2: SOCIAL GRAPH ---
+// --- WEB2: SOCIAL GRAPH (PURE SVG IMPLEMENTATION) ---
 export const WebTwoVisual: React.FC = () => {
+  // Using a consistent internal coordinate system (viewBox) ensures strict alignment
+  // independent of the container's aspect ratio.
+  // Center is (0,0).
+  const RADIUS = 70;
+  const NODES = [0, 60, 120, 180, 240, 300];
+
   return (
     <div className="w-full h-64 relative bg-[#0f172a] rounded-lg border border-cyan-500 overflow-hidden flex items-center justify-center">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-      
-      {/* Central Node */}
-      <motion.div 
-        className="relative z-10 bg-cyan-500 w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,255,255,0.6)]"
-        animate={{ scale: [1, 1.1, 1] }}
-        transition={{ duration: 3, repeat: Infinity }}
-      >
-        <Users className="text-black w-8 h-8" />
-      </motion.div>
+       {/* Background Grid */}
+       <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(#22d3ee 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
 
-      {/* Satellite Nodes */}
-      {[0, 60, 120, 180, 240, 300].map((deg, i) => (
-        <div
-          key={i}
-          className="absolute w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-10"
-          style={{ 
-              top: '50%',
-              left: '50%',
-              transform: `translate(-50%, -50%) translate(${Math.cos(deg * Math.PI / 180) * 100}px, ${Math.sin(deg * Math.PI / 180) * 100}px)`
-          }}
-        >
-          <div className="w-full h-full absolute rounded-full border border-white/30 animate-ping"></div>
-        </div>
-      ))}
-      
-      {/* Connecting Lines (SVG) */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        {[0, 60, 120, 180, 240, 300].map((deg, i) => {
-           return (
-             <line 
-                key={i}
-                x1="50%" y1="50%" 
-                x2={`${50 + Math.cos(deg * Math.PI / 180) * 30}%`} 
-                y2={`${50 + Math.sin(deg * Math.PI / 180) * 40}%`} 
-                stroke="rgba(0, 255, 255, 0.3)" 
-                strokeWidth="2" 
-             />
-           )
-        })}
-      </svg>
+       <svg className="w-full h-full" viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid meet">
+          <defs>
+             {/* 
+                Glow Filter for Nodes
+                FIX: Expanded filter region (x, y, width, height) to prevent "square" clipping of the blur.
+             */}
+             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                   <feMergeNode in="coloredBlur"/>
+                   <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+             </filter>
+             
+             {/* Gradient for Lines */}
+             <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+               <stop offset="0%" stopColor="#22d3ee" stopOpacity="0" />
+               <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.8" />
+               <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+             </linearGradient>
+          </defs>
+
+          {/* Central Hub (Platform) */}
+          <motion.g
+             animate={{ scale: [1, 1.1, 1] }}
+             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+             <circle cx="0" cy="0" r="16" fill="#06b6d4" stroke="#e0f2fe" strokeWidth="2" filter="url(#glow)" />
+             {/* Simple User Icon Shape */}
+             <path d="M-6 6 Q0 12 6 6 M0 -6 L0 6" stroke="#083344" strokeWidth="2" fill="none" />
+             <circle cx="0" cy="-5" r="3" fill="#083344" />
+          </motion.g>
+
+          {/* Orbiting Satellite Group */}
+          <motion.g
+             animate={{ rotate: 360 }}
+             transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
+          >
+             {NODES.map((angle, i) => {
+                const rad = (angle * Math.PI) / 180;
+                const x = Math.cos(rad) * RADIUS;
+                const y = Math.sin(rad) * RADIUS;
+
+                return (
+                   <g key={i}>
+                      {/* Connection Line with Data Flow Effect */}
+                      <motion.line
+                         x1="0" y1="0" x2={x} y2={y}
+                         stroke="rgba(34, 211, 238, 0.3)" 
+                         strokeWidth="1.5"
+                         strokeDasharray="4 3"
+                      />
+                      
+                      {/* Moving packet on line */}
+                      <motion.circle 
+                        r="2" 
+                        fill="#fff"
+                        filter="url(#glow)"
+                      >
+                         <animateMotion 
+                           dur={`${2 + Math.random()}s`} 
+                           repeatCount="indefinite"
+                           path={`M 0 0 L ${x} ${y}`}
+                         />
+                      </motion.circle>
+
+                      {/* Satellite Node (User) */}
+                      <motion.g
+                         initial={{ scale: 0 }}
+                         animate={{ scale: [1, 1.3, 1] }}
+                         transition={{
+                            duration: 2 + Math.random(), // Randomized breath
+                            repeat: Infinity,
+                            delay: i * 0.5,
+                            ease: "easeInOut"
+                         }}
+                      >
+                         <circle
+                            cx={x} cy={y} r="8"
+                            fill="#8b5cf6"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            filter="url(#glow)"
+                         />
+                         {/* Tiny dot inside to look like a profile */}
+                         <circle cx={x} cy={y} r="2" fill="white" />
+                      </motion.g>
+                   </g>
+                );
+             })}
+          </motion.g>
+       </svg>
     </div>
   );
 };

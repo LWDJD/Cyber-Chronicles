@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VolumeX } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as m, AnimatePresence } from 'framer-motion';
+
+const motion = m as any;
 
 const PLAYLIST = [
   "https://cdn.pixabay.com/audio/2022/01/21/audio_31743c58bd.mp3",

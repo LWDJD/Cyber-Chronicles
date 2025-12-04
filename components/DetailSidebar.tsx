@@ -1,7 +1,9 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as m, AnimatePresence } from 'framer-motion';
 import { X, Cpu } from 'lucide-react';
 import { EraData } from '../types';
+
+const motion = m as any;
 
 interface DetailSidebarProps {
   isOpen: boolean;

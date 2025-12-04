@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 const ParticleBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -23,8 +24,9 @@ const ParticleBackground: React.FC = () => {
 
     let animationFrameId: number;
     const particles: Particle[] = [];
-    const particleCount = 40; 
+    const particleCount = 50; // Slightly increased count
     const connectionDistance = 150;
+    const mouseRadius = 200; // Radius for mouse interaction
     
     // Time tracking for delta-based animation
     let lastTime = performance.now();
@@ -34,12 +36,16 @@ const ParticleBackground: React.FC = () => {
       y: number;
       vx: number;
       vy: number;
+      baseX: number; // Original positions to return to if we wanted elastic, but here we just float
+      baseY: number;
       size: number;
       color: string;
 
       constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
+        this.baseX = this.x;
+        this.baseY = this.y;
         // Base speed
         this.vx = (Math.random() - 0.5) * 0.5; 
         this.vy = (Math.random() - 0.5) * 0.5;
@@ -51,15 +57,34 @@ const ParticleBackground: React.FC = () => {
 
       update(dt: number) {
         // Normalize speed: dt is in ms. 
-        // If we want 60fps behavior (approx 16.6ms per frame) to be the baseline:
-        // factor = dt / 16.66
         const timeFactor = dt / 16.66;
         
+        // Basic movement
         this.x += this.vx * timeFactor;
         this.y += this.vy * timeFactor;
 
+        // Bounce off walls
         if (this.x < 0 || this.x > width) this.vx *= -1;
         if (this.y < 0 || this.y > height) this.vy *= -1;
+
+        // MOUSE INTERACTION
+        const dx = mouseRef.current.x - this.x;
+        const dy = mouseRef.current.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < mouseRadius) {
+            // Repel effect (push away)
+            const forceDirectionX = dx / distance;
+            const forceDirectionY = dy / distance;
+            const force = (mouseRadius - distance) / mouseRadius;
+            const directionX = forceDirectionX * force * 2 * timeFactor; // Strength
+            const directionY = forceDirectionY * force * 2 * timeFactor;
+            
+            // Or Attract: change -= to += 
+            // Let's use a gentle repel to create "water ripple" feeling
+            this.x -= directionX;
+            this.y -= directionY;
+        }
       }
 
       draw() {
@@ -89,6 +114,7 @@ const ParticleBackground: React.FC = () => {
         p.update(safeDt);
         p.draw();
 
+        // Connect particles to each other
         for (let j = index + 1; j < particles.length; j++) {
           const p2 = particles[j];
           const dx = p.x - p2.x;
@@ -112,6 +138,20 @@ const ParticleBackground: React.FC = () => {
             }
           }
         }
+        
+        // Connect particles to MOUSE
+        const dx = p.x - mouseRef.current.x;
+        const dy = p.y - mouseRef.current.y;
+        const distMouse = Math.sqrt(dx*dx + dy*dy);
+        if (distMouse < 150) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#ffffff'; // White connection to mouse
+            ctx.globalAlpha = (1 - distMouse / 150) * 0.5;
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(mouseRef.current.x, mouseRef.current.y);
+            ctx.stroke();
+        }
       });
 
       animationFrameId = requestAnimationFrame(animate);
@@ -123,7 +163,6 @@ const ParticleBackground: React.FC = () => {
       width = window.innerWidth;
       height = window.innerHeight;
       
-      // Update canvas size with DPR on resize
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       ctx.scale(dpr, dpr);
@@ -131,9 +170,17 @@ const ParticleBackground: React.FC = () => {
       canvas.style.height = `${height}px`;
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+        mouseRef.current.x = e.clientX;
+        mouseRef.current.y = e.clientY;
+    };
+
     window.addEventListener('resize', handleResize);
+    window.addEventListener('mousemove', handleMouseMove);
+    
     return () => {
         window.removeEventListener('resize', handleResize);
+        window.removeEventListener('mousemove', handleMouseMove);
         cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -144,7 +191,6 @@ const ParticleBackground: React.FC = () => {
       className="fixed top-0 left-0 w-full h-full pointer-events-none z-0"
       style={{ 
         opacity: 0.8,
-        // Promote to own layer to avoid repaints of other elements affecting this
         willChange: 'transform' 
       }} 
     />

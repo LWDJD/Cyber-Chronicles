@@ -1,6 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as m } from 'framer-motion';
 import { ERAS } from '../constants';
+
+const motion = m as any;
 
 interface TimelineNavProps {
   activeId: string;

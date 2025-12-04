@@ -1,6 +1,8 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as m } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+
+const motion = m as any;
 
 const Hero: React.FC = () => {
   return (

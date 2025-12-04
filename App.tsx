@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion as m } from 'framer-motion';
 import ParticleBackground from './components/ParticleBackground';
 import Hero from './components/Hero';
 import EraSection from './components/EraSection';
@@ -8,10 +8,80 @@ import Conclusion from './components/Conclusion';
 import BackgroundMusic from './components/BackgroundMusic';
 import { ERAS } from './constants';
 
+const motion = m as any;
+
+// --- System Signature Watermark Component (Classroom Presentation Mode) ---
+interface SystemSignatureProps {
+  isFooterVisible: boolean;
+}
+
+const SystemSignature: React.FC<SystemSignatureProps> = ({ isFooterVisible }) => (
+  <>
+    {/* DESKTOP: Only show on LG (1024px) and up. 
+        This prevents overlap with the mobile bottom nav which shows up to LG. */}
+    <motion.div
+      initial={{ opacity: 0, x: -50 }}
+      animate={{ 
+        opacity: isFooterVisible ? 0 : 1, 
+        x: 0,
+        y: isFooterVisible ? 20 : 0 
+      }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+      className="fixed bottom-8 left-8 z-[40] pointer-events-none select-none hidden lg:block"
+    >
+      <div className="relative group">
+         {/* Glowing Backdrop */}
+         <div className="absolute -inset-1 bg-cyan-500/20 blur-md rounded-lg opacity-70 animate-pulse"></div>
+         
+         {/* Main Container */}
+         <div className="relative flex items-center gap-4 px-5 py-3 bg-[#050510]/90 border border-cyan-500/50 backdrop-blur-md rounded shadow-[0_0_15px_rgba(0,255,255,0.2)]">
+            
+            {/* Animated Status Dot */}
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500 shadow-[0_0_8px_#00ffff]"></span>
+            </div>
+
+            <div className="flex flex-col items-start border-l border-white/20 pl-4">
+               <span className="text-[10px] font-mono text-cyan-400 tracking-[0.2em] uppercase leading-none mb-1 opacity-80">
+                 Created By
+               </span>
+               <h1 className="text-2xl font-black font-mono text-white tracking-[0.15em] leading-none drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">
+                 LWDJD
+               </h1>
+            </div>
+            
+            {/* Tech Detail Corner */}
+            <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyan-500"></div>
+            <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyan-500"></div>
+         </div>
+      </div>
+    </motion.div>
+
+    {/* MOBILE/TABLET: Minimal Top-Right Badge.
+        Shows on all screens smaller than LG (1024px). */}
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1, duration: 1 }}
+      className="fixed top-6 right-6 z-[50] pointer-events-none select-none lg:hidden"
+    >
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-[#050510]/80 backdrop-blur-md border border-cyan-500/30 rounded-full shadow-[0_0_10px_rgba(0,255,255,0.15)]">
+            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_5px_#00ffff]"></span>
+            <span className="text-[10px] font-black font-mono text-cyan-100 tracking-widest leading-none">LWDJD</span>
+        </div>
+    </motion.div>
+  </>
+);
+
 const App: React.FC = () => {
   const [activeEraId, setActiveEraId] = useState<string>('');
   const [expandedEraId, setExpandedEraId] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  
+  // Footer visibility state for watermark logic
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
+  const footerRef = useRef<HTMLElement>(null);
 
   // CACHE SYSTEM: Store section positions to avoid reading DOM during scroll (prevents layout thrashing)
   const sectionPositionsRef = useRef<{ id: string; top: number; bottom: number }[]>([]);
@@ -100,6 +170,29 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Footer Intersection Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFooterVisible(entry.isIntersecting);
+      },
+      {
+        root: null, // viewport
+        threshold: 0.1, // Trigger when 10% of footer is visible
+      }
+    );
+
+    if (footerRef.current) {
+      observer.observe(footerRef.current);
+    }
+
+    return () => {
+      if (footerRef.current) {
+        observer.unobserve(footerRef.current);
+      }
     };
   }, []);
 
@@ -248,7 +341,12 @@ const App: React.FC = () => {
 
   return (
     // FIX: overflow-x-hidden ensures no horizontal scroll from animated elements
-    <div className="relative text-white min-h-screen selection:bg-cyan-500 selection:text-black w-full overflow-x-hidden">
+    <div className="relative text-white min-h-screen selection:bg-cyan-500 selection:text-black w-full overflow-x-hidden bg-[#0a0a2a]">
+      {/* Cinematic Noise Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.03] mix-blend-overlay" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+      }}></div>
+
       <motion.div 
         animate={{ opacity: [0, 0.001, 0] }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -257,6 +355,7 @@ const App: React.FC = () => {
 
       <ParticleBackground />
       <BackgroundMusic />
+      <SystemSignature isFooterVisible={isFooterVisible} />
       
       <main className="relative z-10 flex flex-col items-center w-full">
         <Hero />
@@ -278,16 +377,24 @@ const App: React.FC = () => {
 
         <Conclusion onReconnect={handleReconnect} disabled={isResetting} />
         
-        <footer className="w-full py-10 text-center text-gray-600 font-mono text-sm border-t border-white/5 relative z-10 bg-black/40">
-          <p>CHRONONET // 系统终止线 SYSTEM END OF LINE</p>
-          <div className="mt-4 flex justify-center gap-4 text-xs opacity-50">
-             <span>REACT 19</span>
+        <footer 
+          ref={footerRef}
+          className="w-full py-12 text-center text-gray-600 font-mono text-sm border-t border-white/5 relative z-10 bg-black/80 backdrop-blur-sm"
+        >
+          <div className="flex flex-col items-center justify-center gap-3">
+            <span className="tracking-[0.2em] text-cyan-500/50 uppercase text-xs">System Architecture</span>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400">CHRONONET v2.0</span>
+              <span className="opacity-20">|</span>
+              <span className="text-cyan-400 font-bold tracking-wider drop-shadow-[0_0_8px_rgba(0,255,255,0.4)]">DESIGN BY LWDJD</span>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-center gap-4 text-[10px] opacity-40 font-mono tracking-widest uppercase">
+             <span>React 19</span>
              <span>•</span>
-             <span>TAILWIND</span>
+             <span>Tailwind</span>
              <span>•</span>
-             <span>FRAMER MOTION</span>
-             <span>•</span>
-             <span>LUCIDE</span>
+             <span>Framer Motion</span>
           </div>
         </footer>
       </main>
