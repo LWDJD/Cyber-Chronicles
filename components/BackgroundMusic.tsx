@@ -9,12 +9,26 @@ const PLAYLIST = [
   "https://cdn.pixabay.com/audio/2022/11/22/audio_febc508520.mp3"
 ];
 
-const BackgroundMusic: React.FC = () => {
+interface BackgroundMusicProps {
+  isSidebarOpen?: boolean;
+}
+
+const BackgroundMusic: React.FC<BackgroundMusicProps> = ({ isSidebarOpen = false }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  
+  // Track screen size to only hide button on mobile/tablet when sidebar is open
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreen = () => setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
 
   useEffect(() => {
     // Initialize Audio Object
@@ -101,17 +115,25 @@ const BackgroundMusic: React.FC = () => {
     }
   };
 
+  // Logic: Hide on mobile/tablet if sidebar is open. Always show on desktop (unless another condition applies in future).
+  // We use opacity 0 and pointer-events-none to hide it but keep it mounted.
+  const shouldHide = isSidebarOpen && !isLargeScreen;
+
   return (
     <motion.button
       layout
       initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
+      animate={{ 
+        opacity: shouldHide ? 0 : 1, 
+        x: shouldHide ? -20 : 0,
+        pointerEvents: shouldHide ? 'none' : 'auto'
+      }}
       transition={{ 
         layout: { duration: 0.3, type: "spring", stiffness: 300, damping: 30 },
-        opacity: { duration: 0.8, delay: 1 },
-        x: { duration: 0.8, delay: 1 }
+        opacity: { duration: 0.3 },
+        x: { duration: 0.3 }
       }}
-      onClick={(e) => {
+      onClick={(e: any) => {
           e.stopPropagation(); // Don't trigger the global unlocker if we are clicking the button specifically
           togglePlay();
       }}

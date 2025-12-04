@@ -359,7 +359,7 @@ const App: React.FC = () => {
       />
 
       <ParticleBackground />
-      <BackgroundMusic />
+      <BackgroundMusic isSidebarOpen={!!expandedEraId} />
       <SystemSignature isFooterVisible={isFooterVisible} isSidebarOpen={!!expandedEraId} />
       
       <main className="relative z-10 flex flex-col items-center w-full">
