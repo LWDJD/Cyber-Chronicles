@@ -63,6 +63,13 @@
         background-size: 100% 2px, 3px 100%;
         pointer-events: none;
       }
+
+      /* Hide default cursor only on devices with fine pointer (mouse) */
+      @media (hover: hover) and (pointer: fine) {
+        body, a, button, input, textarea, select {
+          cursor: none !important;
+        }
+      }
     </style>
   <script type="importmap">
 {

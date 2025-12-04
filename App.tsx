@@ -6,6 +6,7 @@ import EraSection from './components/EraSection';
 import TimelineNav from './components/TimelineNav';
 import Conclusion from './components/Conclusion';
 import BackgroundMusic from './components/BackgroundMusic';
+import CustomCursor from './components/CustomCursor';
 import { ERAS } from './constants';
 
 const motion = m as any;
@@ -357,6 +358,9 @@ const App: React.FC = () => {
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
         className="fixed top-0 left-0 w-1 h-1 pointer-events-none -z-50"
       />
+
+      {/* Render Custom Cursor */}
+      <CustomCursor />
 
       <ParticleBackground />
       <BackgroundMusic isSidebarOpen={!!expandedEraId} />
