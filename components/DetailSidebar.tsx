@@ -22,7 +22,7 @@ const DetailSidebar: React.FC<DetailSidebarProps> = ({ isOpen, onClose, data }) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
           />
 
           {/* Sidebar Panel */}
@@ -31,7 +31,7 @@ const DetailSidebar: React.FC<DetailSidebarProps> = ({ isOpen, onClose, data }) 
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-[#0a0a2a]/95 border-l-2 z-50 overflow-y-auto shadow-2xl"
+            className="fixed top-0 right-0 h-full w-full md:w-[500px] bg-[#0a0a2a]/95 border-l-2 z-[60] overflow-y-auto shadow-2xl"
             style={{ borderColor: data.themeColor, boxShadow: `-10px 0 30px ${data.themeColor}30` }}
           >
             <div className="p-8 flex flex-col h-full relative">

@@ -13,9 +13,10 @@ const motion = m as any;
 // --- System Signature Watermark Component (Classroom Presentation Mode) ---
 interface SystemSignatureProps {
   isFooterVisible: boolean;
+  isSidebarOpen: boolean;
 }
 
-const SystemSignature: React.FC<SystemSignatureProps> = ({ isFooterVisible }) => (
+const SystemSignature: React.FC<SystemSignatureProps> = ({ isFooterVisible, isSidebarOpen }) => (
   <>
     {/* DESKTOP: Only show on LG (1024px) and up. 
         This prevents overlap with the mobile bottom nav which shows up to LG. */}
@@ -59,11 +60,15 @@ const SystemSignature: React.FC<SystemSignatureProps> = ({ isFooterVisible }) =>
     </motion.div>
 
     {/* MOBILE/TABLET: Minimal Top-Right Badge.
-        Shows on all screens smaller than LG (1024px). */}
+        Shows on all screens smaller than LG (1024px).
+        Automatically hides when sidebar is open to avoid blocking the close button. */}
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1, duration: 1 }}
+      animate={{ 
+        opacity: isSidebarOpen ? 0 : 1, 
+        y: 0 
+      }}
+      transition={{ duration: 0.3 }}
       className="fixed top-6 right-6 z-[50] pointer-events-none select-none lg:hidden"
     >
         <div className="flex items-center gap-2 px-3 py-1.5 bg-[#050510]/80 backdrop-blur-md border border-cyan-500/30 rounded-full shadow-[0_0_10px_rgba(0,255,255,0.15)]">
@@ -355,7 +360,7 @@ const App: React.FC = () => {
 
       <ParticleBackground />
       <BackgroundMusic />
-      <SystemSignature isFooterVisible={isFooterVisible} />
+      <SystemSignature isFooterVisible={isFooterVisible} isSidebarOpen={!!expandedEraId} />
       
       <main className="relative z-10 flex flex-col items-center w-full">
         <Hero />
