@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion as m } from 'framer-motion';
+import { motion as m, AnimatePresence } from 'framer-motion';
 import ParticleBackground from './components/ParticleBackground';
 import Hero from './components/Hero';
 import EraSection from './components/EraSection';
@@ -7,7 +7,8 @@ import TimelineNav from './components/TimelineNav';
 import Conclusion from './components/Conclusion';
 import BackgroundMusic from './components/BackgroundMusic';
 import CustomCursor from './components/CustomCursor';
-import DataInsights from './components/DataInsights'; // Import the new component
+import DataInsights from './components/DataInsights';
+import FutureVerse from './components/FutureVerse'; // Import new component
 import { ERAS } from './constants';
 
 const motion = m as any;
@@ -85,6 +86,7 @@ const App: React.FC = () => {
   const [activeEraId, setActiveEraId] = useState<string>('');
   const [expandedEraId, setExpandedEraId] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [showFutureVerse, setShowFutureVerse] = useState(false); // New State
   
   // Footer visibility state for watermark logic
   const [isFooterVisible, setIsFooterVisible] = useState(false);
@@ -204,11 +206,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Global Keyboard Shortcuts: Enter (Open/Close Deep Dive) / Esc (Close Deep Dive)
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleGlobalKeys = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return; 
-      if (isResetting) return;
+      if (isResetting || showFutureVerse) return; // Disable when in FutureVerse
 
       if (e.key === 'Enter') {
         if (expandedEraId) {
@@ -228,7 +230,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleGlobalKeys);
     return () => window.removeEventListener('keydown', handleGlobalKeys);
-  }, [activeEraId, expandedEraId, isResetting]);
+  }, [activeEraId, expandedEraId, isResetting, showFutureVerse]);
 
   // Spacebar navigation handler
   useEffect(() => {
@@ -242,22 +244,18 @@ const App: React.FC = () => {
           return;
         }
         
-        if (expandedEraId || isResetting) {
+        if (expandedEraId || isResetting || showFutureVerse) {
             e.preventDefault();
             return;
         }
 
         e.preventDefault();
         
-        // Use cached positions for spacebar nav too!
         const scrollY = window.scrollY;
         const buffer = 50; 
         let nextTop = undefined;
-
-        // Find next section from cache
         const currentPos = sectionPositionsRef.current;
         
-        // Allowed stops for keyboard navigation
         const navigationTargets = [
             ...ERAS.map(e => e.id), 
             'data-insights',
@@ -265,7 +263,6 @@ const App: React.FC = () => {
         ];
         
         for (const pos of currentPos) {
-           // Check if it's a valid navigation target and is below current scroll
            if (navigationTargets.includes(pos.id) && pos.top > scrollY + buffer) {
              nextTop = pos.top;
              break;
@@ -306,7 +303,7 @@ const App: React.FC = () => {
         clearTimeout(scrollTimeout);
         document.body.style.pointerEvents = '';
     };
-  }, [expandedEraId, isResetting]); 
+  }, [expandedEraId, isResetting, showFutureVerse]); 
 
   // Block inputs during reset
   useEffect(() => {
@@ -362,8 +359,15 @@ const App: React.FC = () => {
         className="fixed top-0 left-0 w-1 h-1 pointer-events-none -z-50"
       />
 
-      {/* Render Custom Cursor */}
-      <CustomCursor />
+      {/* Render Custom Cursor (Hide if FutureVerse is open to avoid layer conflict, or keep it) */}
+      {!showFutureVerse && <CustomCursor />}
+
+      {/* Render Future Verse Overlay */}
+      <AnimatePresence>
+        {showFutureVerse && (
+            <FutureVerse onClose={() => setShowFutureVerse(false)} />
+        )}
+      </AnimatePresence>
 
       <ParticleBackground />
       <BackgroundMusic isSidebarOpen={!!expandedEraId} />
@@ -390,7 +394,11 @@ const App: React.FC = () => {
         {/* INSERT DATA INSIGHTS HERE */}
         <DataInsights id="data-insights" />
 
-        <Conclusion onReconnect={handleReconnect} disabled={isResetting} />
+        <Conclusion 
+            onReconnect={handleReconnect} 
+            onEnterFuture={() => setShowFutureVerse(true)} // Pass handler
+            disabled={isResetting || showFutureVerse} 
+        />
         
         <footer 
           ref={footerRef}
@@ -419,19 +427,21 @@ const App: React.FC = () => {
         - Removed w-full, used inset-x-0 for safer full width
         - Kept other classes
       */}
-      <div className="fixed bottom-0 inset-x-0 bg-[#0a0a2a]/90 backdrop-blur-md border-t border-white/10 p-4 lg:hidden z-50 flex justify-between items-center px-6 safe-pb-4">
-        <span className="text-xs font-mono text-cyan-400 uppercase">
-          {ERAS.find(e => e.id === activeEraId)?.period || "INIT"}
-        </span>
-        <div className="flex gap-1">
-          {ERAS.map(era => (
-             <div 
-               key={era.id} 
-               className={`w-2 h-2 rounded-full transition-colors duration-300 ${activeEraId === era.id ? 'bg-cyan-400 shadow-[0_0_10px_#00ffff]' : 'bg-gray-700'}`}
-             />
-          ))}
+      {!showFutureVerse && (
+        <div className="fixed bottom-0 inset-x-0 bg-[#0a0a2a]/90 backdrop-blur-md border-t border-white/10 p-4 lg:hidden z-50 flex justify-between items-center px-6 safe-pb-4">
+            <span className="text-xs font-mono text-cyan-400 uppercase">
+            {ERAS.find(e => e.id === activeEraId)?.period || "INIT"}
+            </span>
+            <div className="flex gap-1">
+            {ERAS.map(era => (
+                <div 
+                key={era.id} 
+                className={`w-2 h-2 rounded-full transition-colors duration-300 ${activeEraId === era.id ? 'bg-cyan-400 shadow-[0_0_10px_#00ffff]' : 'bg-gray-700'}`}
+                />
+            ))}
+            </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

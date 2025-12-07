@@ -1,15 +1,16 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion as m, useInView } from 'framer-motion';
-import { Power } from 'lucide-react';
+import { Power, Rocket } from 'lucide-react';
 
 const motion = m as any;
 
 interface ConclusionProps {
   onReconnect: () => void;
+  onEnterFuture: () => void; // New prop
   disabled?: boolean;
 }
 
-const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }) => {
+const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, onEnterFuture, disabled = false }) => {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { margin: "-20% 0px -20% 0px", once: false });
 
@@ -224,68 +225,89 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReconnect, disabled = false }
           <p className="text-sm md:text-base opacity-60 font-mono">
             From faint pulse signals to an immersive digital universe, we have witnessed the digital ascension of human thought. This is not just history; it is evolution in progress. 
           </p>
-          <p className="mt-8 text-white font-bold text-xl drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
-             未来已至，你准备好了吗？<br/>
+          <p className="mt-8 text-white font-bold text-xl">
+             <span className="drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">未来已至，你准备好了吗？</span><br/>
              <span className="text-sm font-normal text-gray-500">The future is here. Are you ready?</span>
           </p>
         </div>
 
-        {/* Hold Button */}
-        <div className={`relative inline-block select-none ${disabled ? 'opacity-50 pointer-events-none grayscale' : ''} transition-all duration-500`}>
-          <motion.button
-            animate={{ 
-              scale: isHolding ? 0.95 : (isHovered && !disabled ? 1.05 : 1) 
-            }}
-            transition={{ duration: 0.2 }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
+        {/* Action Buttons Container */}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6">
             
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            onContextMenu={(e: any) => e.preventDefault()}
-            onDragStart={(e: any) => e.preventDefault()}
-            disabled={disabled}
-            className={`group relative px-8 py-4 bg-black transition-all duration-300 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} touch-none`}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            {/* Base Border (fades out when holding starts to let progress bar take over visually) */}
-            <div className={`absolute inset-0 border border-cyan-500/30 transition-opacity duration-300 ${isHolding || progress > 0 ? 'opacity-0' : 'opacity-100'}`}></div>
+            {/* 1. Reconnect (Hold) Button */}
+            <div className={`relative inline-block select-none ${disabled ? 'opacity-50 pointer-events-none grayscale' : ''} transition-all duration-500`}>
+            <motion.button
+                animate={{ 
+                scale: isHolding ? 0.95 : (isHovered && !disabled ? 1.05 : 1) 
+                }}
+                transition={{ duration: 0.2 }}
+                onHoverStart={() => setIsHovered(true)}
+                onHoverEnd={() => setIsHovered(false)}
+                
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                onContextMenu={(e: any) => e.preventDefault()}
+                onDragStart={(e: any) => e.preventDefault()}
+                disabled={disabled}
+                className={`group relative px-8 py-4 bg-black transition-all duration-300 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} touch-none`}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+            >
+                {/* Base Border (fades out when holding starts to let progress bar take over visually) */}
+                <div className={`absolute inset-0 border border-cyan-500/30 transition-opacity duration-300 ${isHolding || progress > 0 ? 'opacity-0' : 'opacity-100'}`}></div>
 
-            {/* Hover Fill */}
-            <div className="absolute inset-0 w-full h-full bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors"></div>
-            
-            {/* Progress Stroke SVG */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
-               <motion.rect 
-                 x="1" y="1" 
-                 width="calc(100% - 2px)" 
-                 height="calc(100% - 2px)" 
-                 fill="none" 
-                 stroke="white" 
-                 strokeWidth="2"
-                 pathLength="100"
-                 strokeDasharray="100 100"
-                 strokeDashoffset={100 - progress}
-                 style={{ 
-                   strokeLinecap: 'butt',
-                   filter: 'drop-shadow(0 0 5px #00ffff) drop-shadow(0 0 10px #00ffff)'
-                 }}
-               />
-            </svg>
+                {/* Hover Fill */}
+                <div className="absolute inset-0 w-full h-full bg-cyan-500/5 group-hover:bg-cyan-500/10 transition-colors"></div>
+                
+                {/* Progress Stroke SVG */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-20 overflow-visible">
+                <motion.rect 
+                    x="1" y="1" 
+                    width="calc(100% - 2px)" 
+                    height="calc(100% - 2px)" 
+                    fill="none" 
+                    stroke="white" 
+                    strokeWidth="2"
+                    pathLength="100"
+                    strokeDasharray="100 100"
+                    strokeDashoffset={100 - progress}
+                    style={{ 
+                    strokeLinecap: 'butt',
+                    filter: 'drop-shadow(0 0 5px #00ffff) drop-shadow(0 0 10px #00ffff)'
+                    }}
+                />
+                </svg>
 
-            {/* Content */}
-            <div className="relative flex items-center gap-3 text-cyan-400 font-mono font-bold tracking-widest z-10">
-              <Power className={`w-5 h-5 transition-all duration-300 ${isHolding ? 'scale-125 text-white animate-pulse' : ''}`} />
-              <span className={`transition-colors duration-300 ${isHolding ? 'text-white' : ''}`}>
-                 {isHolding ? 'HOLD TO RESET...' : (disabled ? 'RESETTING...' : '重新连接 RECONNECT')}
-              </span>
+                {/* Content */}
+                <div className="relative flex items-center gap-3 text-cyan-400 font-mono font-bold tracking-widest z-10">
+                <Power className={`w-5 h-5 transition-all duration-300 ${isHolding ? 'scale-125 text-white animate-pulse' : ''}`} />
+                <span className={`transition-colors duration-300 ${isHolding ? 'text-white' : ''}`}>
+                    {isHolding ? 'HOLD TO RESET...' : (disabled ? 'RESETTING...' : '重新连接 RECONNECT')}
+                </span>
+                </div>
+                
+                {/* Instruction Tooltip (Visible when hovering but not holding) */}
+                <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap ${isHolding || progress > 0 || disabled ? '!opacity-0' : ''}`}>
+                HOLD [SPACE] OR CLICK 2S
+                </div>
+            </motion.button>
             </div>
-            
-            {/* Instruction Tooltip (Visible when hovering but not holding) */}
-            <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap ${isHolding || progress > 0 || disabled ? '!opacity-0' : ''}`}>
-               HOLD [SPACE] OR CLICK 2S
-            </div>
-          </motion.button>
+
+            {/* 2. Enter Future (New) Button */}
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onEnterFuture}
+                disabled={disabled}
+                className={`group relative px-8 py-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50 border border-pink-500/50 hover:border-pink-400 transition-all duration-300 ${disabled ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
+            >
+                <div className="absolute inset-0 bg-pink-500/5 group-hover:bg-pink-500/10"></div>
+                
+                <div className="relative flex items-center gap-3 text-pink-400 group-hover:text-pink-300 font-mono font-bold tracking-widest z-10">
+                    <Rocket className="w-5 h-5 group-hover:animate-bounce" />
+                    <span>进入未来 ENTER FUTURE</span>
+                </div>
+            </motion.button>
+
         </div>
 
       </motion.div>
