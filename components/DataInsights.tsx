@@ -183,7 +183,7 @@ const DataInsights: React.FC<DataInsightsProps> = ({ id }) => {
                     </div>
                     <div className="text-right hidden sm:block">
                         <div className="text-2xl font-bold text-white font-mono">54 亿</div>
-                        <div className="text-xs text-green-400">普及率 > 67%</div>
+                        <div className="text-xs text-green-400">普及率 &gt; 67%</div>
                     </div>
                 </div>
 
