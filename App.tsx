@@ -8,7 +8,8 @@ import Conclusion from './components/Conclusion';
 import BackgroundMusic from './components/BackgroundMusic';
 import CustomCursor from './components/CustomCursor';
 import DataInsights from './components/DataInsights';
-import FutureVerse from './components/FutureVerse'; // Import new component
+import FutureVerse from './components/FutureVerse'; 
+import VideoShowcase from './components/VideoShowcase'; // New Import
 import { ERAS } from './constants';
 
 const motion = m as any;
@@ -86,7 +87,10 @@ const App: React.FC = () => {
   const [activeEraId, setActiveEraId] = useState<string>('');
   const [expandedEraId, setExpandedEraId] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const [showFutureVerse, setShowFutureVerse] = useState(false); // New State
+  const [showFutureVerse, setShowFutureVerse] = useState(false);
+  
+  // State to track if video audio is active (to lower background music)
+  const [isVideoAudioActive, setIsVideoAudioActive] = useState(false);
   
   // Footer visibility state for watermark logic
   const [isFooterVisible, setIsFooterVisible] = useState(false);
@@ -101,6 +105,7 @@ const App: React.FC = () => {
     const sectionIds = [
         'hero', 
         ...ERAS.map(e => e.id), 
+        'video-showcase', // Added 'video-showcase'
         'data-insights',
         'conclusion'
     ];
@@ -256,8 +261,10 @@ const App: React.FC = () => {
         let nextTop = undefined;
         const currentPos = sectionPositionsRef.current;
         
+        // Include 'video-showcase' in navigation targets
         const navigationTargets = [
             ...ERAS.map(e => e.id), 
+            'video-showcase', // Added here
             'data-insights',
             'conclusion'
         ];
@@ -370,7 +377,7 @@ const App: React.FC = () => {
       </AnimatePresence>
 
       <ParticleBackground />
-      <BackgroundMusic isSidebarOpen={!!expandedEraId} />
+      <BackgroundMusic isSidebarOpen={!!expandedEraId} lowVolumeMode={isVideoAudioActive} />
       <SystemSignature isFooterVisible={isFooterVisible} isSidebarOpen={!!expandedEraId} />
       
       <main className="relative z-10 flex flex-col items-center w-full">
@@ -390,6 +397,9 @@ const App: React.FC = () => {
             </React.Fragment>
           ))}
         </div>
+
+        {/* --- ADDED: VIDEO SHOWCASE SECTION with ID --- */}
+        <VideoShowcase id="video-showcase" onPlaybackStateChange={setIsVideoAudioActive} />
 
         {/* INSERT DATA INSIGHTS HERE */}
         <DataInsights id="data-insights" />

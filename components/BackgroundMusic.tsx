@@ -11,9 +11,10 @@ const PLAYLIST = [
 
 interface BackgroundMusicProps {
   isSidebarOpen?: boolean;
+  lowVolumeMode?: boolean;
 }
 
-const BackgroundMusic: React.FC<BackgroundMusicProps> = ({ isSidebarOpen = false }) => {
+const BackgroundMusic: React.FC<BackgroundMusicProps> = ({ isSidebarOpen = false, lowVolumeMode = false }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -74,6 +75,30 @@ const BackgroundMusic: React.FC<BackgroundMusicProps> = ({ isSidebarOpen = false
           }
       }
   }, [currentIndex]); 
+  
+  // Handle Volume Ducking (Low Volume Mode)
+  useEffect(() => {
+    if (!audioRef.current) return;
+    
+    const targetVolume = lowVolumeMode ? 0.05 : 0.3;
+    const fade = setInterval(() => {
+        if (!audioRef.current) { clearInterval(fade); return; }
+        
+        const current = audioRef.current.volume;
+        const diff = targetVolume - current;
+
+        // Tolerance for floating point
+        if (Math.abs(diff) < 0.02) {
+            audioRef.current.volume = targetVolume;
+            clearInterval(fade);
+        } else {
+             // Smooth step
+             audioRef.current.volume = current + (diff > 0 ? 0.02 : -0.02);
+        }
+    }, 50);
+
+    return () => clearInterval(fade);
+  }, [lowVolumeMode]);
 
   // Global Interaction Listener (Unlock Audio Context)
   useEffect(() => {

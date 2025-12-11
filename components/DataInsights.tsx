@@ -83,8 +83,8 @@ const DataInsights: React.FC<DataInsightsProps> = ({ id }) => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [hasStarted, setHasStarted] = useState(false); // New state for manual start
   const [countdown, setCountdown] = useState(3);
-  const requestRef = useRef<number>();
-  const previousTimeRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
+  const previousTimeRef = useRef<number | undefined>(undefined);
 
   // 1. Handle Start Delay (Countdown)
   useEffect(() => {
